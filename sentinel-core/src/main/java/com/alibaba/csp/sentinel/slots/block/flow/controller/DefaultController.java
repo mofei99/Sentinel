@@ -31,8 +31,9 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
 public class DefaultController implements TrafficShapingController {
 
     private static final int DEFAULT_AVG_USED_TOKENS = 0;
-
+    //限流数
     private double count;
+    //限流类型:QPS或线程数
     private int grade;
 
     public DefaultController(double count, int grade) {
@@ -47,19 +48,27 @@ public class DefaultController implements TrafficShapingController {
 
     @Override
     public boolean canPass(Node node, int acquireCount, boolean prioritized) {
+        //获取已处理QPS或线程
         int curCount = avgUsedTokens(node);
+        /**
+         * 如果已经超过curCount+acquireCount大于限流阈值，则直接拒绝（忽略预占逻辑）
+         * 否则，直接通过
+         */
         if (curCount + acquireCount > count) {
+            //限流类型为QPS，且为高优先级请求，则进行预占
             if (prioritized && grade == RuleConstant.FLOW_GRADE_QPS) {
                 long currentTime;
                 long waitInMs;
                 currentTime = TimeUtil.currentTimeMillis();
+                //计算等待时间
                 waitInMs = node.tryOccupyNext(currentTime, acquireCount, count);
+                //需要等待时间<超时时间，则进行预占逻辑
                 if (waitInMs < OccupyTimeoutProperty.getOccupyTimeout()) {
                     node.addWaitingRequest(currentTime + waitInMs, acquireCount);
                     node.addOccupiedPass(acquireCount);
                     sleep(waitInMs);
 
-                    // PriorityWaitException indicates that the request will pass after waiting for {@link @waitInMs}.
+                    // catch住PriorityWaitException异常后，直接放行
                     throw new PriorityWaitException(waitInMs);
                 }
             }
@@ -72,7 +81,7 @@ public class DefaultController implements TrafficShapingController {
         if (node == null) {
             return DEFAULT_AVG_USED_TOKENS;
         }
-        return grade == RuleConstant.FLOW_GRADE_THREAD ? node.curThreadNum() : (int)(node.passQps());
+        return grade == RuleConstant.FLOW_GRADE_THREAD ? node.curThreadNum() : (int) (node.passQps());
     }
 
     private void sleep(long timeMillis) {

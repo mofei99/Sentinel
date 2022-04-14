@@ -69,8 +69,11 @@ public class RateLimiterController implements TrafficShapingController {
         long expectedTime = costTime + latestPassedTime.get();
 
         if (expectedTime <= currentTime) {
-            // 可能存在并发问题，为了性能，可以接受
-            // TODO: 2022/4/11  学习AtomicLong
+            /**
+             * 可能存在并发问题，但为了性能，忍了
+             * AtomicLong中调用了unsafe的putLongValotile,直接更新主存，但无法保证线程安全
+             * Unsafe.putLongVolatile(this, VALUE, newValue);
+             */
             latestPassedTime.set(currentTime);
             return true;
         } else {
