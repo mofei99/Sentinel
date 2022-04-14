@@ -56,15 +56,12 @@ public class RateLimiterController implements TrafficShapingController {
         }
 
         long currentTime = TimeUtil.currentTimeMillis();
-        // 计算两个请求之间的间隔时间，单位:ms
-        //
         /**
          * 计算两个请求之间的间隔时间，单位:ms
          * 假设限流为1000QPS/秒，则间隔时间为1ms
          */
         long costTime = Math.round(1.0 * (acquireCount) / count * 1000);
 
-        //
         /**
          * 期望时间：上次请求通过时间+间隔时间
          * 期望通过时间<=currentTime则直接放行
